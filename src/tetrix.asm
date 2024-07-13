@@ -10,8 +10,11 @@ PLAYFIELDOFFX equ 29
 SCOREPOSX     equ 59
 SCOREPOSY     equ 2
 SCOREWIDTH    equ 10
+LEVELPOSX     equ 60
+LEVELPOSY     equ 17
+LEVELWIDTH    equ 9
 SELECTPOSY    equ 17
-LEVELPOSX     equ 15
+LEVELSELPOSX  equ 15
 RANDOMPOSX    equ 40
 TITLEPOSY     equ 5
 TITLELINES    equ 9
@@ -109,9 +112,9 @@ titlescreen:
 
     ; print level selection
     mov dh,SELECTPOSY
-    mov dl,LEVELPOSX
+    mov dl,LEVELSELPOSX
     call setcursor
-    lea dx,levelstr
+    lea dx,levelselstr
     mov ah,9
     int 21h
 
@@ -132,7 +135,7 @@ titlescreen:
 
     ; print levels
     mov dh,SELECTPOSY+2
-    mov dl,LEVELPOSX
+    mov dl,LEVELSELPOSX
     call setcursor
     mov cl,10
     mov dh,0
@@ -190,6 +193,7 @@ titlescreen:
 .levelsel:
     sub ah,1
     mov [level],ah
+    call setlevelspeed
     call selectlevel
     jmp .loop
 .randomselect:
@@ -209,22 +213,22 @@ titlescreen:
 ;-------------------------------------------------------------------------------
 selectlevel:
     mov dh,SELECTPOSY+1
-    mov dl,LEVELPOSX
+    mov dl,LEVELSELPOSX
     call setcursor
     mov dl,' '
     mov bl,20
     call printcharseq
 
     mov dh,SELECTPOSY+3
-    mov dl,LEVELPOSX
+    mov dl,LEVELSELPOSX
     call setcursor
     mov dl,' '
     mov bl,20
     call printcharseq
     
-    mov bl,[level]      ; grab current level
-    sal bl,1            ; multiply by 2
-    mov ah,LEVELPOSX
+    mov bl,[level]              ; grab current level
+    sal bl,1                    ; multiply by 2
+    mov ah,LEVELSELPOSX
     add ah,bl
     mov dl,ah
     mov dh,SELECTPOSY+1
@@ -299,7 +303,7 @@ init:
     mov [score+2], ax
     mov [linescleared], ax
     mov [drawptr], al
-    mov [speed],byte 50
+    mov [speed],byte 45         ; default value
     mov [level], al
     mov [randomtype],byte 1
     mov bl,7
@@ -386,7 +390,9 @@ buildfield:
 buildinterface:
     call printscoreborder
     call printnextblockboundary
+    call printlevelborder
     call printscore
+    call printlevel
     ret
 
 ;-------------------------------------------------------------------------------
@@ -477,6 +483,103 @@ printscoreborder:
     int 21h
 
     mov bl,SCOREWIDTH
+    mov dl,0xcd
+    call printcharseq
+    
+    mov ah,2
+    mov dl,0xbc
+    int 21h
+
+    ret
+
+;-------------------------------------------------------------------------------
+; print the boundary for the level
+;-------------------------------------------------------------------------------
+printlevelborder:
+    mov cl,LEVELPOSY        ; initial  row index
+
+.firstrow:
+    mov dh,cl               ; row number
+    mov dl,LEVELPOSX        ; column number
+    call setcursor
+
+    mov ah,2
+    mov dl,0xc9
+    int 21h
+
+    mov bl,LEVELWIDTH
+    mov dl,0xcd
+    call printcharseq
+
+    mov ah,2
+    mov dl,0xbb
+    int 21h
+
+.nextstringrow:
+    inc cl
+    mov dh,cl               ; row number
+    mov dl,LEVELPOSX        ; column number
+    call setcursor
+
+    mov ah,2
+    mov dl,0xBA
+    int 21h
+
+    mov ah,9
+    lea dx,levelstr
+    int 21h
+
+    mov ah,2
+    mov dl,0xBA
+    int 21h
+
+.seprow:
+    inc cl
+    mov dh,cl               ; row number
+    mov dl,LEVELPOSX        ; column number
+    call setcursor
+
+    mov ah,2
+    mov dl,0xcc
+    int 21h
+
+    mov bl,LEVELWIDTH
+    mov dl,0xcd
+    call printcharseq
+    
+    mov ah,2
+    mov dl,0xb9
+    int 21h
+
+.blockspace:
+    inc cl
+    mov dh,cl               ; row number
+    mov dl,LEVELPOSX        ; column number
+    call setcursor
+
+    mov ah,2
+    mov dl,0xBA
+    int 21h
+
+    mov bl,LEVELWIDTH
+    mov dl,' '
+    call printcharseq
+    
+    mov ah,2
+    mov dl,0xBA
+    int 21h
+
+.finalrow:
+    inc cl
+    mov dh,cl               ; row number
+    mov dl,LEVELPOSX        ; column number
+    call setcursor
+
+    mov ah,2
+    mov dl,0xc8
+    int 21h
+
+    mov bl,LEVELWIDTH
     mov dl,0xcd
     call printcharseq
     
@@ -867,6 +970,7 @@ removerows:
     call purgerows
     call redrawfield
     call updatescore
+    call adjustlevel
     ;call buildshadowfield
     ret
 
@@ -1049,7 +1153,7 @@ newblock:
     mov [drawptr],dl
     call printnextblock
     call printblock
-    call printbag
+    ;call printbag
     call printblockstats
     ret
 
@@ -1184,6 +1288,58 @@ printscore:
 .exit:
     ret
 
+;-------------------------------------------------------------------------------
+; adjust the game level based on the number of lines removed
+;-------------------------------------------------------------------------------
+adjustlevel:
+    mov ax,[linescleared]
+    mov dx,0                    ; clear remainder
+    mov bx,10
+    div bx                      ; divide by 10 to determine level
+    mov ah,[level]
+    cmp ah,al                   ; check if new level is larger than current
+    jnc .exit                   ; if so, set new level
+    mov [level],al
+.exit:
+    call printlevel
+    call setlevelspeed
+    ret
+
+;-------------------------------------------------------------------------------
+; set the game speed based on the level
+;-------------------------------------------------------------------------------
+setlevelspeed:
+    mov al,[level]
+    cmp al,15                   ; if level bigger or equal to 15?
+    jc .cont                    ; if not, use equation
+    mov ah,1                    ; else, set speed to 1
+    jmp .exit
+.cont:
+    mov ah,15                   ; speed = 15 - level
+    sub ah,al
+.exit:
+    mov [speed],ah
+    ret
+
+;-------------------------------------------------------------------------------
+; print current level
+;-------------------------------------------------------------------------------
+printlevel:
+    mov al,[level]
+    call uint8todec
+
+    ; set cursor
+    mov ah,2
+    xor bh,bh
+    mov dh,LEVELPOSY+3      ; row number
+    mov dl,LEVELPOSX+4      ; column number
+    int 10h
+
+    ; write line counter
+    mov ah,09h
+    lea dx,buffer
+    int 21h
+    ret
 
 ;-------------------------------------------------------------------------------
 ; check collision of the current block
@@ -1869,6 +2025,18 @@ randmod:
     ret
 
 ;-------------------------------------------------------------------------------
+; Convert 8 bit unsigned integer to decimal string
+; INPUT: AL - 8 bit unsigned integer
+;-------------------------------------------------------------------------------
+uint8todec:
+    mov ah,0
+    lea di,buffer+3
+    mov cx, 3              ; digit counter
+    mov [di],byte '$'      ; write terminating character
+    dec di
+    jmp uint16todec.nextdigit
+
+;-------------------------------------------------------------------------------
 ; Convert 16 bit unsigned integer to decimal string
 ; INPUT: AX - 16 bit unsigned integer
 ;-------------------------------------------------------------------------------
@@ -2022,6 +2190,7 @@ db 0x2C,0x01    ; 3 lines: 300 points
 db 0xE8,0x03    ; 4 lines: 1000 points
 
 scorestr: db '  SCORE   $'
+levelstr: db '  LEVEL  $'
 nextstr: db 0xBA,'  NEXT  ',0xBA,'$'
 
 titlepagestr:
@@ -2033,8 +2202,8 @@ db '      \ \  \ \ \  \_|\ \  \ \  \ \ \  \\  \\ \  \  /     \/  $'
 db '       \ \__\ \ \_______\  \ \__\ \ \__\\ _\\ \__\/  /\   \  $'
 db '        \|__|  \|_______|   \|__|  \|__|\|__|\|__/__/ /\ __\ $'
 db '     An IBM compatible Tetris clone by Ivo Filot |__|/ \|__| $'
-db '     https://github.com/ifilot/tetrix             ( v0.1.0 ) $'
-levelstr: db '[0-9] Starting level:$'
+db '     https://github.com/ifilot/tetrix             ( v0.2.0 ) $'
+levelselstr: db '[0-9] Starting level:$'
 randomstr1: db '[A] and [B] Piece generation:$'
 randomstr2: db 'RANDOM   BAG$'
 startstr: db '-- Hit ENTER to start game --$'
@@ -2053,7 +2222,7 @@ tempblockcoord: resb 8  ; temporary block position
 field: resb 200         ; 20 rows x 10 columns
 bplcnt: resb 20         ; counter how many blocks per line there are
 nrlinesrem: resb 1      ; number of lines that will be removed
-linescleared: resb 2    ; number of lines cleared
+linescleared: resb 2    ; total number of lines cleared in the game
 score: resb 4           ; current game score
 drawbag: resb 7         ; bag of 7 tetris pieces, generated randomly
 drawptr: resb 1         ; pointer to bag position

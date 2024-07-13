@@ -23,11 +23,11 @@ Download the executable (`.COM`) file and/or 360KiB floppy image (`.IMG`).
 
 ## Features
 
-Currently, the following features are [x] implemented or [ ] planned.
+Currently, the following features are implemented:
 
 * [x] Selection whether pieces are generated randomly or using a 
       [bag-of-seven](https://tetris.fandom.com/wiki/Random_Generator) procedure.
-* [ ] Select starting level (changes movement speed)
+* [x] Select starting level (changes movement speed)
 * [x] Upon rotation, the pieces are allowed to perform 
       [wall kicks](https://tetris.fandom.com/wiki/Wall_kick) using the
       [SRS system](https://harddrop.com/wiki/SRS).
