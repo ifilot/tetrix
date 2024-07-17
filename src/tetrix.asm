@@ -1,5 +1,22 @@
 ;-------------------------------------------------------------------------------
-; Tetris clone for IBM with MDA graphics (80 x 25 chars)
+;   Tetris clone for IBM with MDA graphics (80 x 25 chars)
+;
+;   Author: Ivo Filot <ivo@ivofilot.nl>                                 
+;                                                                       
+;   TETRIX is free software:                                     
+;   you can redistribute it and/or modify it under the terms of the     
+;   GNU General Public License as published by the Free Software        
+;   Foundation, either version 3 of the License, or (at your option)    
+;   any later version.                                                  
+;                                                                       
+;   TETRIX is distributed in the hope that it will be useful,    
+;   but WITHOUT ANY WARRANTY; without even the implied warranty         
+;   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.             
+;   See the GNU General Public License for more details.                
+;                                                                       
+;   You should have received a copy of the GNU General Public License   
+;   along with this program.  If not, see http://www.gnu.org/licenses/. 
+;                                                                       
 ;-------------------------------------------------------------------------------
 CPU 8086    ; specifically compile for 8086 architecture (compatible with 8088)
 ;-------------------------------------------------------------------------------
@@ -376,12 +393,12 @@ buildfield:
     int 21h
 
     ; zero the field array
-    mov byte [field],0
+    mov [field], word 0
     lea si,field
-    lea di,field+1
-    mov cx,199
+    lea di,field+2
+    mov cx,99
     cld
-    rep movsb
+    rep movsw
     ret
 
 ;-------------------------------------------------------------------------------
@@ -2202,7 +2219,7 @@ db '      \ \  \ \ \  \_|\ \  \ \  \ \ \  \\  \\ \  \  /     \/  $'
 db '       \ \__\ \ \_______\  \ \__\ \ \__\\ _\\ \__\/  /\   \  $'
 db '        \|__|  \|_______|   \|__|  \|__|\|__|\|__/__/ /\ __\ $'
 db '     An IBM compatible Tetris clone by Ivo Filot |__|/ \|__| $'
-db '     https://github.com/ifilot/tetrix             ( v0.2.0 ) $'
+db '     https://github.com/ifilot/tetrix             ( v0.2.1 ) $'
 levelselstr: db '[0-9] Starting level:$'
 randomstr1: db '[A] and [B] Piece generation:$'
 randomstr2: db 'RANDOM   BAG$'
@@ -2230,4 +2247,4 @@ buffer: resb 20         ; buffer for temporary storage
 speed: resb 1           ; movement speed of the pieces
 level: resb 1           ; current level
 randomtype: resb 1      ; which RNG for piece selection to use
-blockstats: resb 14     ; counter for how many pieces of particular type      
+blockstats: resb 14     ; counter for how many pieces of particular type
